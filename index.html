@@ -90,11 +90,14 @@
     </button>
 
     <!-- Firebase Scripts -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, setDoc, doc } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
+    // Replace your current Firebase script section with:
 
-        const firebaseConfig = {
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, setDoc, doc } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
+    import { workoutData } from "./js/workoutData.js";
+
+    const firebaseConfig = {
             apiKey: "AIzaSyD6VXHNZ24qJ2YaScWFgbnHXtl7uIaS4u8",
             authDomain: "workout-9135b.firebaseapp.com",
             projectId: "workout-9135b",
@@ -103,54 +106,65 @@
             appId: "1:801718631070:web:eff3613dbf8444ac92598f"
         };
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-        // Add click handler to populate database button
-        document.getElementById('populateDb').addEventListener('click', async () => {
-            const button = document.getElementById('populateDb');
-            button.textContent = 'Populating...';
-            button.disabled = true;
+    // Add click handler to populate database button
+    document.getElementById('populateDb').addEventListener('click', async () => {
+        const button = document.getElementById('populateDb');
+        button.textContent = 'Populating...';
+        button.disabled = true;
 
-            try {
-                // Add test data
-                await setDoc(doc(db, "programs", "muscle-builder"), {
-                    name: "Muscle Builder",
-                    type: "intermediate",
-                    blocks: 2,
-                    weeksPerBlock: 4,
-                    daysPerWeek: 3,
-                    startDate: "2025-02-03"
-                });
+        try {
+            console.log("Starting database population...");
 
-                // Add a test workout
-                await setDoc(doc(db, "workouts", "test-workout"), {
-                    name: "Test Workout",
-                    exercises: [
-                        {
-                            name: "TRX Chest Press",
-                            sets: 2,
-                            reps: "6-8",
-                            tempo: "4012",
-                            rest: "40sec",
-                            notes: "Tuck elbows at 45°, keep shoulder blades contracted"
-                        }
-                    ]
-                });
-
-                console.log("Database populated successfully");
-                button.textContent = 'Database Populated!';
+            // Add programs
+            for (const [programId, program] of Object.entries(workoutData.programs)) {
+                console.log(`Adding program: ${program.name}`);
                 
-                setTimeout(() => {
-                    button.textContent = 'Populate Database';
-                    button.disabled = false;
-                }, 3000);
+                // Add program data
+                await setDoc(doc(db, "programs", programId), {
+                    name: program.name,
+                    type: program.type,
+                    blocks: program.blocks,
+                    weeksPerBlock: program.weeksPerBlock,
+                    daysPerWeek: program.daysPerWeek,
+                    startDate: program.startDate,
+                    description: program.description
+                });
 
-            } catch (error) {
-                console.error("Error:", error);
-                button.textContent = 'Error - Try Again';
+                // Add workouts for this program
+                for (const [workoutId, workout] of Object.entries(program.workouts)) {
+                    console.log(`Adding workout: ${programId}-${workoutId}`);
+                    await setDoc(doc(db, "workouts", `${programId}-${workoutId}`), {
+                        programId: programId,
+                        block: workout.block,
+                        week: workout.week,
+                        day: workout.day,
+                        focus: workout.focus,
+                        exercises: workout.exercises
+                    });
+                }
+            }
+
+            console.log("Database populated successfully");
+            button.textContent = 'Database Populated!';
+            
+            setTimeout(() => {
+                button.textContent = 'Populate Database';
                 button.disabled = false;
+            }, 3000);
+
+        } catch (error) {
+            console.error("Error:", error);
+            button.textContent = 'Error - Try Again';
+            button.disabled = false;
+        }
+    });
+
+    // Your existing countdown timer code stays the same
+</script>
             }
         });
 
