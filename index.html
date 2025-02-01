@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="TRX Workout Guide">
+    <meta property="og:description" content="Interactive TRX workout guide with audio cues">
+    <meta property="og:type" content="website">
     <title>TRX Workout Guide</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -160,8 +163,10 @@
                 button.disabled = false;
             }
         });
+    </script>
 
-        // Initialize countdown timer
+    <!-- Countdown Timer Script -->
+    <script>
         function updateCountdown() {
             const startDate = new Date('2025-02-03T00:00:00');
             const now = new Date();
