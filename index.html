@@ -4,94 +4,182 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TRX Workout Guide</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="TRX Workout Guide with audio guidance and progress tracking">
+    <meta name="keywords" content="TRX, workout, fitness, exercise, audio guide">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="favicon.png">
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <link href="css/styles.css" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
+        import { getAuth } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD6VXHNZ24qJ2YaScWFgbnHXtl7uIaS4u8",
+            authDomain: "workout-9135b.firebaseapp.com",
+            projectId: "workout-9135b",
+            storageBucket: "workout-9135b.firebasestorage.app",
+            messagingSenderId: "801718631070",
+            appId: "1:801718631070:web:eff3613dbf8444ac92598f"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        window.db = getFirestore(app);
+        window.auth = getAuth(app);
+    </script>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 min-h-screen">
     <div id="app" class="container mx-auto px-4 py-8">
-        <!-- Header -->
+        <!-- Header Section -->
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold mb-4">TRX Workout Guide</h1>
-            <div id="countdown" class="bg-blue-100 p-4 rounded-lg">
-                <h2 class="text-2xl font-semibold">Next Workout: February 3rd, 2025</h2>
-                <div class="countdown-timer text-xl font-bold text-blue-800"></div>
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">TRX Workout Guide</h1>
+            <div id="countdown" class="bg-blue-100 p-4 rounded-lg shadow-md">
+                <h2 class="text-2xl font-semibold text-blue-800">Starting February 3rd, 2025</h2>
+                <div id="countdownTimer" class="text-xl font-bold text-blue-600 mt-2"></div>
             </div>
         </header>
 
-        <!-- Workout Selection -->
-        <div class="mb-8">
-            <select id="programSelect" class="w-full p-3 border rounded-lg">
-                <option value="">Select Program</option>
-                <option value="muscle-builder">Muscle Builder (Intermediate)</option>
-                <option value="full-body">Full Body Athlete (Advanced)</option>
-            </select>
-        </div>
+        <!-- Program Selection -->
+        <section class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Select Your Program</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="programSelect" class="block text-gray-700 mb-2">Program</label>
+                    <select id="programSelect" class="w-full p-3 border rounded-lg">
+                        <option value="">Choose a program...</option>
+                        <option value="muscle-builder">Muscle Builder (Intermediate)</option>
+                        <option value="full-body">Full Body Athlete (Advanced)</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="weekSelect" class="block text-gray-700 mb-2">Week</label>
+                    <select id="weekSelect" class="w-full p-3 border rounded-lg" disabled>
+                        <option value="">Select week...</option>
+                    </select>
+                </div>
 
-        <!-- Week Selection -->
-        <div class="mb-8">
-            <select id="weekSelect" class="w-full p-3 border rounded-lg">
-                <option value="">Select Week</option>
-            </select>
-        </div>
+                <div>
+                    <label for="daySelect" class="block text-gray-700 mb-2">Workout Day</label>
+                    <select id="daySelect" class="w-full p-3 border rounded-lg" disabled>
+                        <option value="">Select day...</option>
+                    </select>
+                </div>
+            </div>
+        </section>
 
-        <!-- Workout Day Selection -->
-        <div class="mb-8">
-            <select id="daySelect" class="w-full p-3 border rounded-lg">
-                <option value="">Select Day</option>
-            </select>
-        </div>
-
-        <!-- Current Exercise Display -->
-        <div id="exerciseDisplay" class="bg-white p-6 rounded-lg shadow-md mb-8 hidden">
-            <h2 class="text-2xl font-bold mb-4">Current Exercise</h2>
-            <div class="exercise-info">
-                <h3 id="exerciseName" class="text-xl font-semibold"></h3>
-                <p id="exerciseNotes" class="text-gray-600 mb-4"></p>
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div>
+        <!-- Current Exercise Section -->
+        <section id="currentExercise" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Current Exercise</h2>
+            <div class="exercise-details space-y-4">
+                <h3 id="exerciseName" class="text-xl font-semibold text-blue-600"></h3>
+                <p id="exerciseNotes" class="text-gray-600"></p>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-gray-50 p-3 rounded">
                         <span class="font-bold">Sets:</span>
                         <span id="exerciseSets"></span>
                     </div>
-                    <div>
+                    <div class="bg-gray-50 p-3 rounded">
                         <span class="font-bold">Reps:</span>
                         <span id="exerciseReps"></span>
                     </div>
-                    <div>
+                    <div class="bg-gray-50 p-3 rounded">
                         <span class="font-bold">Tempo:</span>
                         <span id="exerciseTempo"></span>
                     </div>
-                    <div>
+                    <div class="bg-gray-50 p-3 rounded">
                         <span class="font-bold">Rest:</span>
                         <span id="exerciseRest"></span>
                     </div>
                 </div>
-            </div>
-            <div class="flex space-x-4">
-                <button id="startExercise" class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600">
-                    Start Exercise
-                </button>
-                <button id="stopExercise" class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600">
-                    Stop
-                </button>
-            </div>
-        </div>
 
-        <!-- Exercise List -->
-        <div id="exerciseList" class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-2xl font-bold mb-4">Workout Plan</h2>
-            <div id="exerciseItems" class="space-y-4">
+                <div class="flex space-x-4">
+                    <button id="startExercise" class="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors">
+                        Start Exercise
+                    </button>
+                    <button id="stopExercise" class="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors">
+                        Stop
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Workout Plan Section -->
+        <section id="workoutPlan" class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Today's Workout Plan</h2>
+            <div id="exerciseList" class="space-y-4">
                 <!-- Exercises will be populated here -->
+            </div>
+        </section>
+
+        <!-- Progress Tracking Modal -->
+        <div id="progressModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+            <div class="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+                <h3 class="text-xl font-bold mb-4">Log Exercise Progress</h3>
+                <form id="progressForm" class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">Weight Used (if applicable)</label>
+                        <input type="number" name="weight" class="w-full p-2 border rounded">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">Notes</label>
+                        <textarea name="notes" class="w-full p-2 border rounded"></textarea>
+                    </div>
+                    <div class="flex space-x-4">
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Save</button>
+                        <button type="button" class="bg-gray-300 px-4 py-2 rounded" onclick="closeProgressModal()">Cancel</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 
+    <!-- Audio Feedback Element -->
+    <audio id="beepSound" src="assets/beep.mp3"></audio>
+
     <!-- Scripts -->
-    <script src="js/database.js"></script>
-    <script src="js/audio.js"></script>
-    <script src="js/workouts.js"></script>
-    <script src="js/app.js"></script>
+    <script type="module" src="js/database.js"></script>
+    <script type="module" src="js/audio.js"></script>
+    <script type="module" src="js/workouts.js"></script>
+    <script type="module" src="js/app.js"></script>
+
+    <script>
+        // Countdown Timer
+        function updateCountdown() {
+            const startDate = new Date('2025-02-03T00:00:00');
+            const now = new Date();
+            const difference = startDate - now;
+
+            if (difference <= 0) {
+                document.getElementById('countdownTimer').textContent = 'Program Started!';
+                return;
+            }
+
+            const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+            document.getElementById('countdownTimer').textContent = 
+                `${days}d ${hours}h ${minutes}m ${seconds}s`;
+        }
+
+        setInterval(updateCountdown, 1000);
+        updateCountdown();
+
+        // Modal Functions
+        window.closeProgressModal = function() {
+            document.getElementById('progressModal').classList.add('hidden');
+        };
+    </script>
 </body>
 </html>
