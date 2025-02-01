@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRX Workout Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <link href="css/styles.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div id="app" class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold mb-4">TRX Workout Guide</h1>
+            <div id="countdown" class="bg-blue-100 p-4 rounded-lg">
+                <h2 class="text-2xl font-semibold">Next Workout: February 3rd, 2025</h2>
+                <div class="countdown-timer text-xl font-bold text-blue-800"></div>
+            </div>
+        </header>
+
+        <!-- Workout Selection -->
+        <div class="mb-8">
+            <select id="programSelect" class="w-full p-3 border rounded-lg">
+                <option value="">Select Program</option>
+                <option value="muscle-builder">Muscle Builder (Intermediate)</option>
+                <option value="full-body">Full Body Athlete (Advanced)</option>
+            </select>
+        </div>
+
+        <!-- Week Selection -->
+        <div class="mb-8">
+            <select id="weekSelect" class="w-full p-3 border rounded-lg">
+                <option value="">Select Week</option>
+            </select>
+        </div>
+
+        <!-- Workout Day Selection -->
+        <div class="mb-8">
+            <select id="daySelect" class="w-full p-3 border rounded-lg">
+                <option value="">Select Day</option>
+            </select>
+        </div>
+
+        <!-- Current Exercise Display -->
+        <div id="exerciseDisplay" class="bg-white p-6 rounded-lg shadow-md mb-8 hidden">
+            <h2 class="text-2xl font-bold mb-4">Current Exercise</h2>
+            <div class="exercise-info">
+                <h3 id="exerciseName" class="text-xl font-semibold"></h3>
+                <p id="exerciseNotes" class="text-gray-600 mb-4"></p>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <span class="font-bold">Sets:</span>
+                        <span id="exerciseSets"></span>
+                    </div>
+                    <div>
+                        <span class="font-bold">Reps:</span>
+                        <span id="exerciseReps"></span>
+                    </div>
+                    <div>
+                        <span class="font-bold">Tempo:</span>
+                        <span id="exerciseTempo"></span>
+                    </div>
+                    <div>
+                        <span class="font-bold">Rest:</span>
+                        <span id="exerciseRest"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex space-x-4">
+                <button id="startExercise" class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600">
+                    Start Exercise
+                </button>
+                <button id="stopExercise" class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600">
+                    Stop
+                </button>
+            </div>
+        </div>
+
+        <!-- Exercise List -->
+        <div id="exerciseList" class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-bold mb-4">Workout Plan</h2>
+            <div id="exerciseItems" class="space-y-4">
+                <!-- Exercises will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/database.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/workouts.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
