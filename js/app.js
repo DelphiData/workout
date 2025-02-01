@@ -1,212 +1,198 @@
 // js/app.js
-import { workoutAudio } from './audio.js';
-import { workoutManager } from './workouts.js';
+import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
 
-class App {
-    constructor() {
-        this.currentWorkout = null;
-        this.currentExercise = null;
-        this.initializeElements();
-        this.addEventListeners();
-        this.startCountdown();
+document.addEventListener('DOMContentLoaded', () => {
+    const db = getFirestore();
+    const programSelect = document.getElementById('programSelect');
+    const weekSelect = document.getElementById('weekSelect');
+    const daySelect = document.getElementById('daySelect');
+    const exerciseItems = document.getElementById('exerciseItems');
+    const exerciseDisplay = document.getElementById('exerciseDisplay');
+
+    // Audio setup
+    let audioContext;
+    let currentExercise = null;
+    let exerciseInterval = null;
+    const speechSynthesis = window.speechSynthesis;
+
+    function initAudio() {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
 
-    initializeElements() {
-        // Program selection elements
-        this.programSelect = document.getElementById('programSelect');
-        this.weekSelect = document.getElementById('weekSelect');
-        this.daySelect = document.getElementById('daySelect');
-
-        // Exercise display elements
-        this.exerciseDisplay = document.getElementById('currentExercise');
-        this.exerciseName = document.getElementById('exerciseName');
-        this.exerciseNotes = document.getElementById('exerciseNotes');
-        this.exerciseSets = document.getElementById('exerciseSets');
-        this.exerciseReps = document.getElementById('exerciseReps');
-        this.exerciseTempo = document.getElementById('exerciseTempo');
-        this.exerciseRest = document.getElementById('exerciseRest');
-
-        // Control buttons
-        this.startButton = document.getElementById('startExercise');
-        this.stopButton = document.getElementById('stopExercise');
-
-        // Exercise list
-        this.exerciseList = document.getElementById('exerciseList');
+    function speakText(text) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.9; // Slightly slower than default
+        utterance.pitch = 1;
+        speechSynthesis.speak(utterance);
     }
 
-    addEventListeners() {
-        // Program selection handlers
-        this.programSelect.addEventListener('change', () => this.handleProgramChange());
-        this.weekSelect.addEventListener('change', () => this.handleWeekChange());
-        this.daySelect.addEventListener('change', () => this.handleDayChange());
-
-        // Exercise control handlers
-        this.startButton.addEventListener('click', () => this.startCurrentExercise());
-        this.stopButton.addEventListener('click', () => this.stopCurrentExercise());
-    }
-
-    async handleProgramChange() {
-        const programId = this.programSelect.value;
-        if (!programId) return;
-
-        // Enable and populate week select
-        this.weekSelect.disabled = false;
-        this.weekSelect.innerHTML = '<option value="">Select week...</option>';
+    function startTempoCount(tempo) {
+        if (!tempo) return;
         
-        const weeks = workoutManager.getWeeksForProgram(programId);
-        for (let i = 1; i <= weeks; i++) {
-            const option = document.createElement('option');
-            option.value = i;
-            option.textContent = `Week ${i}`;
-            this.weekSelect.appendChild(option);
-        }
+        // Parse tempo string (e.g., "4012")
+        const [eccentric, bottomHold, concentric, topHold] = tempo.split('').map(Number);
+        let phase = 'eccentric';
+        let count = eccentric;
 
-        // Reset day select
-        this.daySelect.innerHTML = '<option value="">Select day...</option>';
-        this.daySelect.disabled = true;
+        clearInterval(exerciseInterval);
+        
+        exerciseInterval = setInterval(() => {
+            if (count > 0) {
+                speakText(count.toString());
+                count--;
+            } else {
+                switch(phase) {
+                    case 'eccentric':
+                        phase = 'bottomHold';
+                        count = bottomHold;
+                        if (bottomHold > 0) speakText('Hold bottom');
+                        break;
+                    case 'bottomHold':
+                        phase = 'concentric';
+                        count = concentric;
+                        speakText('Push up');
+                        break;
+                    case 'concentric':
+                        phase = 'topHold';
+                        count = topHold;
+                        if (topHold > 0) speakText('Hold top');
+                        break;
+                    case 'topHold':
+                        phase = 'eccentric';
+                        count = eccentric;
+                        speakText('Lower down');
+                        break;
+                }
+            }
+        }, 1000);
     }
 
-    async handleWeekChange() {
-        const programId = this.programSelect.value;
-        const week = this.weekSelect.value;
+    function stopTempoCount() {
+        clearInterval(exerciseInterval);
+        speechSynthesis.cancel();
+    }
+
+    async function loadWorkout(programId, week, day) {
+        try {
+            const workoutsRef = collection(db, "workouts");
+            const q = query(workoutsRef, 
+                where("programId", "==", programId),
+                where("week", "==", parseInt(week)),
+                where("day", "==", parseInt(day))
+            );
+
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                const workoutData = querySnapshot.docs[0].data();
+                displayWorkout(workoutData);
+            }
+        } catch (error) {
+            console.error("Error loading workout:", error);
+        }
+    }
+
+    function displayWorkout(workout) {
+        if (!workout || !workout.exercises) return;
+
+        exerciseItems.innerHTML = '';
+        workout.exercises.forEach((exercise, index) => {
+            const exerciseDiv = document.createElement('div');
+            exerciseDiv.className = 'exercise-item p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100';
+            exerciseDiv.innerHTML = `
+                <h3 class="font-bold">${exercise.name}</h3>
+                <p>Sets: ${exercise.sets} | Reps: ${exercise.reps}</p>
+                <p>Tempo: ${exercise.tempo} | Rest: ${exercise.rest}</p>
+            `;
+            
+            exerciseDiv.addEventListener('click', () => selectExercise(exercise));
+            exerciseItems.appendChild(exerciseDiv);
+        });
+    }
+
+    function selectExercise(exercise) {
+        currentExercise = exercise;
+        exerciseDisplay.classList.remove('hidden');
+        
+        document.getElementById('exerciseName').textContent = exercise.name;
+        document.getElementById('exerciseNotes').textContent = exercise.notes || '';
+        document.getElementById('exerciseSets').textContent = exercise.sets;
+        document.getElementById('exerciseReps').textContent = exercise.reps;
+        document.getElementById('exerciseTempo').textContent = exercise.tempo;
+        document.getElementById('exerciseRest').textContent = exercise.rest;
+
+        // Announce exercise selection
+        speakText(`Selected exercise: ${exercise.name}`);
+    }
+
+    // Event Listeners
+    programSelect.addEventListener('change', () => {
+        const program = programSelect.value;
+        if (!program) return;
+
+        weekSelect.disabled = false;
+        weekSelect.innerHTML = '<option value="">Select Week</option>';
+        
+        const weekCount = program === 'muscle-builder' ? 8 : 16;
+        for (let i = 1; i <= weekCount; i++) {
+            weekSelect.innerHTML += `<option value="${i}">Week ${i}</option>`;
+        }
+        
+        daySelect.disabled = true;
+        daySelect.innerHTML = '<option value="">Select Day</option>';
+    });
+
+    weekSelect.addEventListener('change', () => {
+        const week = weekSelect.value;
         if (!week) return;
 
-        // Enable and populate day select
-        this.daySelect.disabled = false;
-        this.daySelect.innerHTML = '<option value="">Select day...</option>';
+        daySelect.disabled = false;
+        daySelect.innerHTML = '<option value="">Select Day</option>';
         
-        const days = workoutManager.getDaysForProgram(programId);
-        for (let i = 1; i <= days; i++) {
-            const option = document.createElement('option');
-            option.value = i;
-            option.textContent = `Day ${i}`;
-            this.daySelect.appendChild(option);
+        for (let i = 1; i <= 3; i++) {
+            daySelect.innerHTML += `<option value="${i}">Day ${i}</option>`;
         }
-    }
+    });
 
-    async handleDayChange() {
-        const programId = this.programSelect.value;
-        const week = this.weekSelect.value;
-        const day = this.daySelect.value;
-        if (!day) return;
-
-        try {
-            // Load workout data
-            this.currentWorkout = await workoutManager.getWorkout(programId, week, day);
-            this.displayWorkout();
-        } catch (error) {
-            console.error('Error loading workout:', error);
-            alert('Error loading workout data');
-        }
-    }
-
-    displayWorkout() {
-        if (!this.currentWorkout) return;
-
-        // Clear existing exercise list
-        this.exerciseList.innerHTML = '';
-
-        // Display warmup if available
-        if (this.currentWorkout.warmup) {
-            this.addSectionToList('Warm Up', this.currentWorkout.warmup.exercises);
-        }
-
-        // Display main exercises
-        this.addSectionToList('Main Workout', this.currentWorkout.exercises);
-
-        // Display cooldown if available
-        if (this.currentWorkout.cooldown) {
-            this.addSectionToList('Cool Down', this.currentWorkout.cooldown.exercises);
-        }
-    }
-
-    addSectionToList(title, exercises) {
-        const section = document.createElement('div');
-        section.className = 'mb-6';
+    daySelect.addEventListener('change', () => {
+        const program = programSelect.value;
+        const week = weekSelect.value;
+        const day = daySelect.value;
         
-        const heading = document.createElement('h3');
-        heading.className = 'text-xl font-bold mb-4';
-        heading.textContent = title;
-        section.appendChild(heading);
+        if (program && week && day) {
+            loadWorkout(program, week, day);
+        }
+    });
 
-        exercises.forEach((exercise, index) => {
-            const exerciseElement = this.createExerciseElement(exercise, index);
-            section.appendChild(exerciseElement);
-        });
-
-        this.exerciseList.appendChild(section);
-    }
-
-    createExerciseElement(exercise, index) {
-        const div = document.createElement('div');
-        div.className = 'bg-gray-50 p-4 rounded-lg mb-4 cursor-pointer hover:bg-gray-100';
-        div.onclick = () => this.selectExercise(exercise);
-
-        div.innerHTML = `
-            <div class="flex justify-between items-center">
-                <h4 class="font-semibold">${exercise.name}</h4>
-                <span class="text-sm text-gray-600">
-                    ${exercise.sets} × ${exercise.reps}
-                </span>
-            </div>
-            <p class="text-sm text-gray-600 mt-2">${exercise.notes || ''}</p>
-            <div class="text-sm text-gray-500 mt-2">
-                Tempo: ${exercise.tempo || '222'} | Rest: ${exercise.rest || '40sec'}
-            </div>
-        `;
-
-        return div;
-    }
-
-    selectExercise(exercise) {
-        this.currentExercise = exercise;
-        this.exerciseName.textContent = exercise.name;
-        this.exerciseNotes.textContent = exercise.notes || '';
-        this.exerciseSets.textContent = exercise.sets;
-        this.exerciseReps.textContent = exercise.reps;
-        this.exerciseTempo.textContent = exercise.tempo || '222';
-        this.exerciseRest.textContent = exercise.rest || '40sec';
+    // Start/Stop Exercise buttons
+    document.getElementById('startExercise').addEventListener('click', () => {
+        if (!currentExercise) return;
         
-        this.exerciseDisplay.classList.remove('hidden');
-    }
+        // Initialize audio context on first user interaction
+        if (!audioContext) {
+            initAudio();
+        }
 
-    startCurrentExercise() {
-        if (!this.currentExercise) return;
-        workoutAudio.startExercise(this.currentExercise);
-        this.startButton.disabled = true;
-    }
+        // Announce exercise start
+        speakText(`Starting ${currentExercise.name}`);
+        speakText(`Perform ${currentExercise.reps} reps`);
+        speakText(`Tempo is ${currentExercise.tempo}`);
+        
+        // Start tempo counting
+        setTimeout(() => {
+            startTempoCount(currentExercise.tempo);
+        }, 2000);
+    });
 
-    stopCurrentExercise() {
-        workoutAudio.stop();
-        this.startButton.disabled = false;
-    }
+    document.getElementById('stopExercise').addEventListener('click', () => {
+        stopTempoCount();
+        speakText("Exercise stopped");
+    });
 
-    startCountdown() {
-        const startDate = new Date('2025-02-03T00:00:00');
-        const updateCountdown = () => {
-            const now = new Date();
-            const difference = startDate - now;
-
-            if (difference <= 0) {
-                document.getElementById('countdownTimer').textContent = 'Program Started!';
-                return;
-            }
-
-            const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((difference % (1000 * 60)) / 1000);
-
-            document.getElementById('countdownTimer').textContent = 
-                `${days}d ${hours}h ${minutes}m ${seconds}s`;
-        };
-
-        setInterval(updateCountdown, 1000);
-        updateCountdown();
-    }
-}
-
-// Initialize the app when the DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    window.app = new App();
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        stopTempoCount();
+        if (audioContext) {
+            audioContext.close();
+        }
+    });
 });
